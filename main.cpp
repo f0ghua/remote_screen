@@ -2,7 +2,7 @@
  * File Type:     C/C++
  * Author:        Hutao {hutaonice@gmail.com}
  * Creation:      星期四 25/07/2019 18:39.
- * Last Revision: 星期二 06/08/2019 14:46.
+ * Last Revision: 星期三 07/08/2019 20:23.
  */
 #include <iostream>
 #include <opencv2/opencv.hpp>  // This includes most headers!
@@ -16,6 +16,7 @@
 #include <termio.h>
 #include <stdio.h>
 #include <vector>
+#include <Compresser.hpp>
 
 #include <time.h>
 #define FPS(start) (CLOCKS_PER_SEC / (clock()-start))
@@ -24,6 +25,7 @@
 using std::cout;
 using std::endl;
 const int channels = 3;
+const int default_fps = 10;
 
 struct ScreenShot{
     ScreenShot(uint x, uint y, uint width, uint height):
@@ -96,50 +98,42 @@ long calc_dif_pix(cv::Mat* last, cv::Mat* cur){
     return ret;
 }
 
-void calc_dif_mat(cv::Mat* diff, cv::Mat* last, cv::Mat* cur){
-    int width = last->cols;
-    int height = last->rows;
-    for(int i=0;i<height;i++)
-        for(int j=0;j<width;j++){
-            for(int c=0;c<3;c++){
-                diff->data[i*width*4+j*4+c] = cur->data[i*width*4+j*4+c] - last->data[i*width*4+j*4+c];
-            }
-        }
-
-}
-
 int main(){
     int WIDTH = 1920;
     int HEIGHT = 1080;
     ScreenShot screen(0, 0, WIDTH, HEIGHT);
-    cv::Mat *last = new cv::Mat(HEIGHT, WIDTH, CV_8UC4);
     cv::Mat *cur = new cv::Mat(HEIGHT, WIDTH, CV_8UC4);
-    cv::Mat *diff = new cv::Mat(HEIGHT, WIDTH, CV_8UC4);
-    screen(last);
+    cv::Mat cur_gray;
+
+    Compresser compresser(HEIGHT, WIDTH, PARTS_MOTION_GRAY_JPEG);
+    Decompresser decompresser(HEIGHT, WIDTH, PARTS_MOTION_GRAY_JPEG);
+    uchar* data = new uchar[HEIGHT*WIDTH*4];
+    int size;
 
     for(uint i=0;i<1000000; ++i){
         double start = cv::getTickCount();
 
         screen(cur);
-        //printf("%ld\n", calc_dif_pix(last, cur));
-        calc_dif_mat(diff, last, cur);
-        swap(cur, last);
+        cv::cvtColor(*cur, cur_gray, CV_BGRA2GRAY);
+        compresser.compress(data, &size, cur_gray.data);
+        FILE* p = fopen("./tmp.dat", "wb+");
+        fwrite(data, size, 1, p);
+        fclose(p);
+        decompresser.decompress(data, data);
+        memcpy(cur_gray.data, data, WIDTH*HEIGHT);
 
-        std::vector<uchar> data;
-        std::vector<int> params;
-        params.push_back(cv::IMWRITE_JPEG_QUALITY);
-        params.push_back(80);
-        cv::imencode(".jpg", *diff, data, params);
-        cout<<data.size()<<endl;
+        int sz = size;
+        for(int i=0;i<sz;i+=10000){
+            cout<<"0";
+        }
+        cout<<"\t\t\t"<<sz*default_fps*1.0/1024/1024<<"  MB/S"<<endl;
 
         start = cv::getTickCount() - start;
         start = start / cv::getTickFrequency();
-        printf("fps %4.f  spf %.4f ms\n", 1./start, start*1000);
-        cv::Mat gray;
-        cv::cvtColor(*last, gray, CV_BGRA2GRAY);
-        cv::imshow("img", gray);
-        char q = cv::waitKey(1);
-        if(q == 'q') break;
+        //printf("fps %4.f  spf %.4f ms\n", 1./start, start*1000);
+        cv::imshow("img", cur_gray);
+        char q = cv::waitKey(100);
+        if(q == 27) break;
     }
 
     return 0;
