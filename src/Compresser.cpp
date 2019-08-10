@@ -8,7 +8,56 @@
 #include <Compresser.hpp>
 
 void Compresser::parts_motion_jpeg(uchar* compressed, int* size, const uchar* input){
-    //Not Implemented
+    const int x_pl = m_width / PART_X;
+    const int y_pl = m_height / PART_Y;
+    bool *mark = new bool[PART_X * PART_Y];
+    memset(mark, 0, PART_X*PART_Y);
+
+    *size = 0;
+
+    for(int i=0;i<m_height;i++){
+        int y_ind = i/y_pl;
+        for(int j=0;j<PART_X;j++){
+            if(mark[y_ind*PART_X + j]) continue;
+            for(int s=j*x_pl;s<(j+1)*x_pl;s++){
+                for(int c=0;c<3;c++)
+                    if(input[i*m_width*3 + s*3 + c] != last_frame[i*m_width*3 + s*3 +c]){
+                        mark[y_ind*PART_X + j] = true;
+                        break;
+                    }
+            }
+        }
+    }
+    memcpy(compressed+*size, mark, PART_X*PART_Y);
+    *size += PART_X * PART_Y;
+    int sum = 0;
+    for(int i=0;i<PART_X*PART_Y;i++){
+        if(!mark[i]) continue;
+        int x = (i%PART_X)*x_pl;
+        int y = (i/PART_X)*y_pl;
+        if(mark[i]) sum ++;
+        cv::Mat mat_part(y_pl, x_pl, CV_8UC3);
+        for(int j=0;j<y_pl;j++){
+            for(int k=0;k<x_pl;k++){
+                for(int c=0;c<3;c++)
+                    mat_part.at<cv::Vec3b>(j, k)[c] = input[(y+j)*m_width*3 + (x+k)*3 + c];// - last_frame[(y+j)*m_width +x+k];
+            }
+
+        }
+        std::vector<uchar> data;
+        std::vector<int> params;
+        params.push_back(cv::IMWRITE_JPEG_QUALITY);
+        params.push_back(40);
+        cv::imencode(".jpg", mat_part, data, params);
+        int sz = data.size();
+        memcpy(compressed+*size, &sz, sizeof(int));
+        *size += sizeof(int);
+        memcpy(compressed+*size, &(data[0]), sz);
+        *size += sz;
+    }
+    //cout<<sum<<endl;
+    memcpy(last_frame, input, m_width*m_height*3);
+    delete mark;
 }
 
 void Compresser::parts_motion_jpeg_gray(uchar* compressed, int* size, const uchar* input){
@@ -49,7 +98,7 @@ void Compresser::parts_motion_jpeg_gray(uchar* compressed, int* size, const ucha
         std::vector<uchar> data;
         std::vector<int> params;
         params.push_back(cv::IMWRITE_JPEG_QUALITY);
-        params.push_back(30);
+        params.push_back(40);
         cv::imencode(".jpg", mat_part, data, params);
         int sz = data.size();
         memcpy(compressed+*size, &sz, sizeof(int));
@@ -57,7 +106,7 @@ void Compresser::parts_motion_jpeg_gray(uchar* compressed, int* size, const ucha
         memcpy(compressed+*size, &(data[0]), sz);
         *size += sz;
     }
-    cout<<sum<<endl;
+    //cout<<sum<<endl;
     memcpy(last_frame, input, m_width*m_height);
     delete mark;
 }
@@ -154,7 +203,36 @@ void Decompresser::parts_motion_jpeg_gray(uchar* output, const uchar* input){
 }
 
 void Decompresser::parts_motion_jpeg(uchar* output, const uchar* input){
-    //Not Implemented
+    const int x_pl = m_width / PART_X;
+    const int y_pl = m_height / PART_Y;
+    bool* mark = new bool[PART_X*PART_Y];
+    int offset = 0;
+    memcpy(mark, input+offset, PART_X*PART_Y);
+    offset += PART_X*PART_Y;
+    int len;
+    for(int i=0;i<PART_X*PART_Y;i++){
+        if(!mark[i]) continue;
+        memcpy(&len, input+offset, sizeof(int));
+        offset += sizeof(int);
+        cv::Mat jpg(1, len, CV_8UC3);
+        memcpy(jpg.data, input+offset, len);
+        offset += len;
+        cv::Mat out = cv::imdecode(jpg, CV_LOAD_IMAGE_COLOR);
+        //cv::imshow("interm", out);
+        //cv::waitKey(1);
+        int x = (i%PART_X)*x_pl;
+        int y = (i/PART_X)*y_pl;
+        for(int j=0;j<y_pl;j++){
+            for(int k=0;k<x_pl;k++){
+                for(int c=0;c<3;c++)
+                    last_frame[(y+j)*m_width*3 + (x+k)*3 + c] = out.at<cv::Vec3b>(j, k)[c];
+            }
+        }
+    }
+    memcpy(output, last_frame, m_width*m_height*3);
+
+    delete mark;
+
 }
 
 /* EOF */
