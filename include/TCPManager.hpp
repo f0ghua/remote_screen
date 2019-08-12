@@ -40,11 +40,45 @@ public:
     ~TCPManager();
     bool ConnectToServer();
     inline bool isConnected(){return connected;}
+    bool initServer();
+    bool initClient();
+
     void SendBuffer(void* buffer, unsigned int size);
     void RecvBuffer(void* buffer, unsigned int* size);
 
-    bool initServer();
-    bool initClient();
+    void Send_Input(unsigned char* p, int sz){
+        send(sender, p, sz, 0);
+    }
+    long long Recv_Input(){
+        long long ret = 0;
+        unsigned char* p =(unsigned char*)&ret;
+        unsigned char t;
+        recv(sender, p, 1, 0);
+        t = p[0];
+
+        if((t>>7)&1){
+            // KeyBoard Input
+            recv(sender, p+1, 1, 0);
+            return ret;
+            if((t>>6)&1){
+                //Release
+            }
+            else {
+                //Press
+            }
+        }
+        else{
+            // Mouse Input
+            if((t>>6)&1){
+                //Mouse Move
+                recv(sender, p+1, 4, 0);
+            }
+            else{
+                // Mouse Button
+            }
+            return ret;
+        }
+    }
 };
 
 #endif   /* End of TCPSENDER.H */

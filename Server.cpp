@@ -8,9 +8,11 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>  // This includes most headers!
 #include <vector>
+#include <thread>
 #include <Compresser.hpp>
 #include <ScreenShot.hpp>
 #include <TCPManager.hpp>
+#include <InputSimulator.hpp>
 
 #include <time.h>
 #define FPS(start) (CLOCKS_PER_SEC / (clock()-start))
@@ -18,24 +20,75 @@
 
 using std::cout;
 using std::endl;
-const int channels = 3;
 int default_fps = 10;
 
+int WIDTH = 1920;
+int HEIGHT = 1080;
+
+Compresser compresser(HEIGHT, WIDTH, PARTS_MOTION_JPEG);
+TCPManager tcp;
+InputSimulator simulator;
+
+void recv_input_fun(){
+    while(1){
+        long long code = tcp.Recv_Input();
+        unsigned char* p = (unsigned char*)&code;
+        unsigned char t;
+        t = p[0];
+        if((t>>7)&1){
+            // KeyBoard Input
+            if((t>>6)&1){
+                //Release
+                simulator.ReleaseKey(p[1]);
+            }
+            else {
+                //Press
+                simulator.PressKey(p[1]);
+            }
+        }
+        else{
+            // Mouse Input
+            if((t>>6)&1){
+                //Mouse Move
+                unsigned short x, y;
+                x = *(unsigned short*)(p+1);
+                y = *(unsigned short*)(p+3);
+                simulator.MouseMove(x, y);
+            }
+            else{
+                // Mouse Button
+                t = t%8;
+                switch(t){
+                    case 0:simulator.PressLeft();break;
+                    case 1:simulator.ReleaseLeft();break;
+                    case 2:simulator.PressRight();break;
+                    case 3:simulator.ReleaseRight();break;
+                    case 4:simulator.PressMid();break;
+                    case 5:simulator.ReleaseMid();break;
+                    case 6:simulator.WheelUp();break;
+                    case 7:simulator.WheelDown();break;
+                }
+            }
+        }
+    }
+}
 
 int main(){
-    int WIDTH = 1920;
-    int HEIGHT = 1080;
     ScreenShot screen(0, 0, 1920, 1080);
     cv::Mat *cur = new cv::Mat(1080, 1920, CV_8UC4);
     cv::Mat cur_gray;
 
-    Compresser compresser(HEIGHT, WIDTH, PARTS_MOTION_JPEG);
     uchar* data = new uchar[HEIGHT*WIDTH*4];
     int size;
 
-    TCPManager sender;
-    sender.ConnectToServer();
-    if(! sender.isConnected()) return 0;
+    tcp.ConnectToServer();
+    if(! tcp.isConnected()) {
+        cout<<"Connecting to Server error."<<endl;
+        return 0;
+    }
+
+    std::thread* th = new std::thread(recv_input_fun);
+    th->detach();
 
     for(uint i=0;i>=0; ++i){
         double start = cv::getTickCount();
@@ -44,7 +97,7 @@ int main(){
         cv::cvtColor(*cur, cur_gray, CV_BGRA2BGR);
         cv::resize(cur_gray, cur_gray, cv::Size(WIDTH, HEIGHT));
         compresser.compress(data, &size, cur_gray.data);
-        sender.SendBuffer(data, size);
+        tcp.SendBuffer(data, size);
 
         int sz = size;
         for(int i=0;i<sz;i+=10000){
@@ -62,8 +115,9 @@ int main(){
         double iter_time = start;
         if(iter_time < 1000./default_fps)
             usleep((1000./default_fps - iter_time)*1000);
-        //printf("fps %4.f  spf %.4f ms\n", 1./start, start*1000);
     }
+
+    delete th;
 
     return 0;
 }

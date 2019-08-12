@@ -26,7 +26,7 @@ const int WIDTH = 1920;
 const int HEIGHT = 1080;
 
 GUIManager gui;
-TCPManager recver;
+extern TCPManager tcp;
 uchar* buffer;
 bool need_update = false;
 
@@ -35,7 +35,7 @@ void recv_image_fun(){
     uchar* data = new uchar[HEIGHT*WIDTH*3];
     unsigned int size;
     while(1){
-        recver.RecvBuffer(data, &size);
+        tcp.RecvBuffer(data, &size);
         decompresser.decompress(data, data);
         while(need_update) usleep(1000);
         memcpy(buffer, data, HEIGHT*WIDTH*3);
@@ -45,8 +45,8 @@ void recv_image_fun(){
 
 int main(){
     buffer = new uchar[HEIGHT*WIDTH*3];
-    recver.ConnectToServer();
-    if(!recver.isConnected()){
+    tcp.ConnectToServer();
+    if(!tcp.isConnected()){
         cout<<"Connecting to server error."<<endl;
         return -1;
     }
