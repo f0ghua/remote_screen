@@ -28,10 +28,12 @@ add_library(mylib SHARED ${src})
 add_executable(server Server.cpp)
 add_executable(main main.cpp)
 add_executable(client Client.cpp)
+add_executable(test test_function.cpp)
 
 target_link_libraries(mylib
   ${OpenCV_LIBS}
   ${X11_LIBRARIES}
+  Xtst
   glfw
   dl
   )
@@ -42,5 +44,8 @@ target_link_libraries(main
   mylib
   )
 target_link_libraries(client
+  mylib
+  )
+target_link_libraries(test
   mylib
   )
