@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/taotao/Documents/capture_screen/test_function.cpp
+X11/Xutil.h
+-
+X11/keysym.h
+-
+X11/extensions/XTest.h
+-
+iostream
+-
+

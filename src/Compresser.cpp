@@ -130,6 +130,10 @@ Compresser::~Compresser(){
     delete last_frame;
 }
 
+void Compresser::init(){
+    memcpy(last_frame, 0, m_width*m_height*3);
+}
+
 void Compresser::compress(uchar* compressed, int* size, const uchar* input){
     void (Compresser::* kernel)(uchar*, int*, const uchar*);
     switch(m_type){

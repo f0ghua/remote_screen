@@ -5,8 +5,13 @@
  * Last Revision: 星期五 09/08/2019 15:39.
  */
 
+#include <opencv2/opencv.hpp>
 #include <GUIManager.hpp>
+#include <TCPManager.hpp>
 
+extern TCPManager tcp = TCPManager();
+
+int cur_height, cur_width;
 
 GUIManager::GUIManager(){
     glfwInit();
@@ -31,11 +36,15 @@ bool GUIManager::is_Window_Created(){
 void GUIManager::set_current_size(const int height, const int width){
     m_height = height;
     m_width = width;
+    cur_height = height;
+    cur_width = width;
 }
 
 bool GUIManager::CreateWindow(const int height=1080, const int width=1920, const std::string title="title"){
     m_height = height;
     m_width = width;
+    cur_height = height;
+    cur_width = width;
     window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
     if (window == NULL)
     {
@@ -45,6 +54,8 @@ bool GUIManager::CreateWindow(const int height=1080, const int width=1920, const
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_motion_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -122,6 +133,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+    cur_height = height;
+    cur_width = width;
 }
 
 // glfw: whenever the mouse moves, this callback is called
@@ -149,10 +162,63 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     //camera.ProcessMouseScroll(yoffset);
+    unsigned char t = 0;
+    if(yoffset > 0) t = 6;
+    else if(yoffset < 0) t = 7;
+    tcp.Send_Input(&t, 1);
 }
 /* EOF */
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     //if (key == GLFW_KEY_E && action == GLFW_PRESS)
         //activate_airship();
+    uchar t[2] = {0};
+    t[0] |= 1<<7;
+    if(action == GLFW_RELEASE) t[0] |= 1<<6;
+    t[1] = scancode;
+    tcp.Send_Input(t, 2);
+
+}
+void mouse_motion_callback(GLFWwindow* window, double xpos, double ypos){
+    static double st = cv::getTickCount();
+    if( (cv::getTickCount() - st)/cv::getTickFrequency() < 0.2) return;
+    st = cv::getTickCount();
+    long long data = 0;
+    uchar* p = (uchar*)&data;
+    p[0] |= 1<<6;
+    short tmp = xpos*1.0/cur_width*1920;
+    *(short*)(p+1) = tmp;
+    tmp = ypos*1.0/cur_height*1080;
+    *(short*)(p+3) = tmp;
+    tcp.Send_Input((uchar*)&data, 5);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods){
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    long long data = 0;
+    uchar* p = (uchar*)&data;
+    p[0] |= 1<<6;
+    short tmp = xpos*1.0/cur_width*1920;
+    *(short*)(p+1) = tmp;
+    tmp = ypos*1.0/cur_height*1080;
+    *(short*)(p+3) = tmp;
+    tcp.Send_Input((uchar*)&data, 5);
+
+    uchar t = 0;
+    if(action == GLFW_RELEASE){
+        switch(button){
+            case GLFW_MOUSE_BUTTON_LEFT: t = 1;break;
+            case GLFW_MOUSE_BUTTON_MIDDLE: t = 5;break;
+            case GLFW_MOUSE_BUTTON_RIGHT: t = 3;break;
+        }
+    }
+    else if(action == GLFW_PRESS){
+        switch(button){
+            case GLFW_MOUSE_BUTTON_LEFT: t = 0;break;
+            case GLFW_MOUSE_BUTTON_MIDDLE: t = 4;break;
+            case GLFW_MOUSE_BUTTON_RIGHT: t = 2;break;
+        }
+    }
+    tcp.Send_Input(&t, 1);
 }
