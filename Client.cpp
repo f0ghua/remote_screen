@@ -16,6 +16,8 @@
 #include <TCPManager.hpp>
 
 #include <time.h>
+#include <sys/signal.h>
+
 #define FPS(start) (CLOCKS_PER_SEC / (clock()-start))
 
 
@@ -45,8 +47,9 @@ void recv_image_fun(){
 
 int main(){
     buffer = new uchar[HEIGHT*WIDTH*3];
-    tcp.ConnectToServer();
-    if(!tcp.isConnected()){
+    signal(SIGPIPE, SIG_IGN);
+
+    if(!tcp.initClient()){
         cout<<"Connecting to server error."<<endl;
         return -1;
     }

@@ -37,6 +37,7 @@ public:
     Compresser(const int height, const int width, const CompressType type);
     ~Compresser();
     void compress(uchar* compressed, int* size, const uchar* input);
+    void init();
 };
 
 
