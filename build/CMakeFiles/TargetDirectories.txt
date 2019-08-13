@@ -1,7 +1,0 @@
-/home/taotao/Documents/capture_screen/build/CMakeFiles/rebuild_cache.dir
-/home/taotao/Documents/capture_screen/build/CMakeFiles/server.dir
-/home/taotao/Documents/capture_screen/build/CMakeFiles/mylib.dir
-/home/taotao/Documents/capture_screen/build/CMakeFiles/main.dir
-/home/taotao/Documents/capture_screen/build/CMakeFiles/edit_cache.dir
-/home/taotao/Documents/capture_screen/build/CMakeFiles/test.dir
-/home/taotao/Documents/capture_screen/build/CMakeFiles/client.dir
