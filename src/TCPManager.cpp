@@ -35,6 +35,7 @@ void TCPManager::clean(){
 }
 
 bool TCPManager::ConnectToServer(){
+    sender = socket(AF_INET, SOCK_STREAM, 0);
     int ret = connect(sender, (sockaddr*)&addr, sizeof(addr));
     if(ret) cout<<"connect error"<<endl;
     else cout<<"connect success"<<endl;
@@ -50,10 +51,14 @@ bool TCPManager::SendBuffer(void* buffer, unsigned int size){
     while(size > 0){
         int cur_sz = min(pack_size, size);
         ret = send(sender, ptr, cur_sz, 0);
-        if(ret <= 0) exit(0);
+        if(ret <= 0){
+            connected = false;
+            return false;
+        }
         size -= cur_sz;
         ptr += cur_sz;
     }
+    return true;
 }
 
 bool TCPManager::RecvBuffer(void* buffer, unsigned int* size){
@@ -66,11 +71,13 @@ bool TCPManager::RecvBuffer(void* buffer, unsigned int* size){
         int cur_sz = min(pack_size, *size);
         int ret = recv(sender, ptr, cur_sz, 0);
         if(ret < 0){
+            connected = false;
             return false;
         }
         *size -= ret;
         ptr += ret;
     }
+    return true;
 }
 
 void TCPManager::Send_Input(unsigned char* p, int sz)

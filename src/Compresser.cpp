@@ -131,7 +131,7 @@ Compresser::~Compresser(){
 }
 
 void Compresser::init(){
-    memcpy(last_frame, 0, m_width*m_height*3);
+    memset(last_frame, 0, m_width*m_height*3);
 }
 
 void Compresser::compress(uchar* compressed, int* size, const uchar* input){

@@ -2,7 +2,7 @@
  * File Type:     C/C++
  * Author:        Hutao {hutaonice@gmail.com}
  * Creation:      星期四 08/08/2019 11:04.
- * Last Revision: 星期二 13/08/2019 16:50.
+ * Last Revision: 星期三 21/08/2019 19:20.
  */
 
 #include <iostream>
@@ -28,7 +28,6 @@ int default_fps = 10;
 int WIDTH = 1920;
 int HEIGHT = 1080;
 
-Compresser compresser(HEIGHT, WIDTH, PARTS_MOTION_JPEG);
 TCPManager tcp;
 InputSimulator simulator;
 std::string id;
@@ -78,6 +77,7 @@ void recv_input_fun(){
 }
 
 int main(){
+    Compresser compresser(HEIGHT, WIDTH, PARTS_MOTION_JPEG);
     ScreenShot screen(0, 0, 1920, 1080);
     cv::Mat *cur = new cv::Mat(1080, 1920, CV_8UC4);
     cv::Mat cur_gray;
